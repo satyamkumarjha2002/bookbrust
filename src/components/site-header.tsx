@@ -1,31 +1,92 @@
-'use client';
+"use client"
 
-import { SidebarIcon } from 'lucide-react';
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { BookOpenIcon } from "lucide-react"
 
-import { Button } from '@/components/ui/button';
-import { useSidebar } from '@/components/ui/sidebar';
-import { ModeToggle } from './ui/mode-toggle';
-import { SidebarWrapper } from '@/app/sidebar-wrapper';
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { authService } from "@/lib/services"
+import { ModeToggle } from "@/components/mode-toggle"
+import { useEffect, useState } from "react"
 
 export function SiteHeader() {
-  const { toggleSidebar } = useSidebar();
+  const pathname = usePathname()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  
+  useEffect(() => {
+    setIsAuthenticated(authService.isAuthenticated())
+  }, [pathname])
+  
+  const handleLogout = () => {
+    authService.logout()
+    window.location.href = "/"
+  }
 
   return (
-    <header className="flex sticky top-0 left-0 right-0 z-50 w-full items-center border-b bg-background">
-      <div className="flex h-14 w-full items-center justify-between px-4">
-        <SidebarWrapper>
-          <Button
-            className="h-8 w-8"
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-          >
-            <SidebarIcon className="h-4 w-4" />
-          </Button>
-          <h1 className="text-lg font-semibold">BookBrust</h1>
-        </SidebarWrapper>
-        <ModeToggle />
+    <header className="sticky top-0 z-40 w-full border-b bg-background">
+      <div className="container flex h-16 items-center justify-between py-4">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center space-x-2">
+            <BookOpenIcon className="h-6 w-6" />
+            <span className="font-bold text-xl">BookBrust</span>
+          </Link>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {isAuthenticated ? (
+            <>
+              <nav className="flex items-center space-x-4 lg:space-x-6">
+                <Link
+                  href="/dashboard"
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    pathname === "/dashboard"
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/profile"
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    pathname === "/profile"
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  Profile
+                </Link>
+              </nav>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link 
+                href="/login" 
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  pathname === "/login"
+                    ? "text-primary"
+                    : "text-muted-foreground"
+                )}
+              >
+                Login
+              </Link>
+              <Button asChild>
+                <Link href="/signup">
+                  Sign Up
+                </Link>
+              </Button>
+            </>
+          )}
+          <ModeToggle />
+        </div>
       </div>
     </header>
-  );
+  )
 }

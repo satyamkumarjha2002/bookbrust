@@ -10,7 +10,7 @@ const nextConfig = {
   },
   reactStrictMode: true,
   images: {
-    domains: [],
+    domains: ['m.media-amazon.com'],
   },
   // Disable static optimization to ensure cookies are passed correctly
   trailingSlash: false,

@@ -1,25 +1,26 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/ui/theme-provider';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { SiteHeader } from '@/components/site-header';
-import { AppSidebar } from '@/components/app-sidebar';
+import "@/app/globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import { SiteHeader } from "@/components/site-header"
+import { Metadata } from "next"
+import { Toaster } from "@/components/ui/toaster"
+import { Inter } from "next/font/google"
+import { AppFooter } from "@/components/app-footer"
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'BookBrust',
-  description: 'A fresh start for BookBrust project',
-};
+  title: "BookBrust - Track Your Reading Journey",
+  description: "BookBrust helps you track your reading journey, manage your bookshelf, and share your reviews.",
+}
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head />
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
@@ -27,17 +28,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider className="flex flex-col">
+          <div className="relative flex min-h-screen flex-col">
             <SiteHeader />
-            <div className="flex flex-1">
-              <AppSidebar />
-              <main className="flex-1 p-4">
-                {children}
-              </main>
-            </div>
-          </SidebarProvider>
+            <main className="flex-1">{children}</main>
+            <AppFooter />
+          </div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

@@ -1,22 +1,28 @@
+// Safe check for browser environment
+const isBrowser = typeof window !== 'undefined';
+
 class LocalStorageService {
   // Save data to localStorage with type safety
   static save<T>(key: string, value: T): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(value));
+    if (isBrowser) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
     }
   }
 
   // Retrieve data from localStorage with proper type handling
   static get<T>(key: string): T | null {
-    if (typeof window !== 'undefined') {
-      const storedValue = localStorage.getItem(key);
-      if (storedValue && storedValue !== 'undefined') {
-        try {
+    if (isBrowser) {
+      try {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue && storedValue !== 'undefined') {
           return JSON.parse(storedValue) as T;
-        } catch (error) {
-          console.error('Error parsing JSON from localStorage:', error);
-          return null;
         }
+      } catch (error) {
+        console.error('Error parsing JSON from localStorage:', error);
       }
     }
     return null;
@@ -24,15 +30,23 @@ class LocalStorageService {
 
   // Remove an item from localStorage
   static remove(key: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(key);
+    if (isBrowser) {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.error('Error removing from localStorage:', error);
+      }
     }
   }
 
   // Clear all items in localStorage
   static clear(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
+    if (isBrowser) {
+      try {
+        localStorage.clear();
+      } catch (error) {
+        console.error('Error clearing localStorage:', error);
+      }
     }
   }
 
