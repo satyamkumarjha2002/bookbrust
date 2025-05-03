@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npm run format ||
+(
+    echo '
+          🤢🤮🤢🤮 Your styling looks disgusting. 🤢🤮🤢🤮
+          Prettier Check Failed. 
+          Run `npm run format:fix` and commit again.
+          ';
+    false;
+)
+
+echo '✅✅✅... Alright... Code looks good to me...Commiting'

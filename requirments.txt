@@ -1,0 +1,157 @@
+1. Landing & Authentication
+
+Landing Page
+
+Simple, clean marketing landing page
+
+CTA for Signup/Login
+
+Overview of features
+
+Authentication Forms
+
+Signup form (email, password)
+
+Login form (email, password)
+
+Form validations and error display
+
+Redirect to dashboard upon success
+
+Logout button to clear auth cookie
+
+2. Dashboard
+
+Summary Cards
+
+Total books read
+
+Currently reading
+
+Want to read count
+
+Trending Carousel
+
+Horizontally scrollable component
+
+Top trending books (cover, title, small stats)
+
+Clickable to view book detail
+
+3. My Bookshelf (Private)
+
+Tabbed View Component
+
+Tabs: Reading 📖 | Finished ✅ | Want to Read 📚
+
+State remembered via cookies
+
+Book-Card List View
+
+Display title, cover image, author
+
+Status badge (based on enum)
+
+Rating stars (if available)
+
+Quick-edit button for rating/notes/status
+
+Add Book
+
+Manual entry form (title, author, ISBN, cover URL)
+
+Auto-fetch from Google Books / Open Library API (optional)
+
+4. Book Detail Page
+
+Book Metadata
+
+Title, author, description, ISBN
+
+Cover image
+
+User Log Section
+
+Status dropdown (Reading/Finished/Want to Read)
+
+Star rating selector (1–5)
+
+Notes input (textarea with Markdown preview)
+
+Save/Delete buttons for updating/removing log
+
+Community Reviews Section
+
+List of public reviews for the book
+
+Show: user name (optional), rating, review content
+
+Pagination if too many reviews
+
+5. Review Editor
+
+Editor UI
+
+Textarea with Markdown support
+
+Emoji picker
+
+Live preview pane
+
+Save/Edit/Delete actions
+
+Validation for required fields
+
+6. Public User Profile
+
+Profile Page
+
+Publicly accessible via /users/:id
+
+Show "Finished" and "Want to Read" books only
+
+Read-only display of book cards
+
+Shareable Link Generator
+
+Copyable URL for user’s public profile
+
+7. Continue Reading Prompt
+
+Recently Viewed Tracker
+
+Track last viewed book detail page (via cookie/local storage)
+
+Show “Continue Reading” prompt on dashboard if book is in Reading status
+
+8. General UI/UX
+
+Responsive Design
+
+Tailwind CSS components for mobile/tablet/desktop
+
+Dark Mode Toggle
+
+Optional feature synced with system preference
+
+Snappy Transitions
+
+Use of React + Framer Motion for smooth transitions
+
+Loading States
+
+Skeleton loaders for book lists, dashboard cards, etc.
+
+Error Boundaries
+
+Display friendly error messages for API failures
+
+9. Global Components
+
+Navbar (Auth-aware: login/signup vs. dashboard/profile)
+
+Footer
+
+Toast notifications (success, error)
+
+Modal for delete confirmations
