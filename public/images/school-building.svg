@@ -1,0 +1,57 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g filter="url(#filter0_d)">
+    <!-- Main building -->
+    <rect x="40" y="60" width="80" height="80" fill="#7C3AED" />
+    
+    <!-- Roof -->
+    <path d="M30 60L80 20L130 60H30Z" fill="#4C1D95" />
+    
+    <!-- Door -->
+    <rect x="70" y="110" width="20" height="30" fill="#F59E0B" />
+    <circle cx="75" cy="125" r="2" fill="#1F2937" />
+    
+    <!-- Windows -->
+    <rect x="50" y="70" width="15" height="15" fill="#BFDBFE" />
+    <rect x="50" y="70" width="15" height="15" stroke="#1E40AF" strokeWidth="1" />
+    <line x1="50" y1="77.5" x2="65" y2="77.5" stroke="#1E40AF" />
+    <line x1="57.5" y1="70" x2="57.5" y2="85" stroke="#1E40AF" />
+    
+    <rect x="95" y="70" width="15" height="15" fill="#BFDBFE" />
+    <rect x="95" y="70" width="15" height="15" stroke="#1E40AF" strokeWidth="1" />
+    <line x1="95" y1="77.5" x2="110" y2="77.5" stroke="#1E40AF" />
+    <line x1="102.5" y1="70" x2="102.5" y2="85" stroke="#1E40AF" />
+    
+    <rect x="50" y="95" width="15" height="15" fill="#BFDBFE" />
+    <rect x="50" y="95" width="15" height="15" stroke="#1E40AF" strokeWidth="1" />
+    <line x1="50" y1="102.5" x2="65" y2="102.5" stroke="#1E40AF" />
+    <line x1="57.5" y1="95" x2="57.5" y2="110" stroke="#1E40AF" />
+    
+    <rect x="95" y="95" width="15" height="15" fill="#BFDBFE" />
+    <rect x="95" y="95" width="15" height="15" stroke="#1E40AF" strokeWidth="1" />
+    <line x1="95" y1="102.5" x2="110" y2="102.5" stroke="#1E40AF" />
+    <line x1="102.5" y1="95" x2="102.5" y2="110" stroke="#1E40AF" />
+    
+    <!-- Flag -->
+    <line x1="79.5" y1="20" x2="79.5" y2="40" stroke="#1F2937" strokeWidth="3" />
+    <path d="M80 20H95V30L80 25V20Z" fill="#EF4444" />
+    
+    <!-- Steps -->
+    <rect x="65" y="140" width="30" height="5" fill="#9CA3AF" />
+    <rect x="60" y="145" width="40" height="5" fill="#9CA3AF" />
+    
+    <!-- School bell tower -->
+    <rect x="70" y="35" width="20" height="25" fill="#8B5CF6" />
+    <ellipse cx="80" cy="47.5" rx="5" ry="7.5" fill="#F3F4F6" />
+  </g>
+  <defs>
+    <filter id="filter0_d" x="0" y="0" width="160" height="160" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset dy="4"/>
+      <feGaussianBlur stdDeviation="5"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.15 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+</svg> 

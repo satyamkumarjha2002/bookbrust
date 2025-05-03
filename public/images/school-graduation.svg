@@ -1,0 +1,31 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g filter="url(#filter0_d)">
+    <!-- Graduation cap top -->
+    <path d="M20 50L60 30L100 50L60 70L20 50Z" fill="#1E293B" />
+    
+    <!-- Graduation cap tassel -->
+    <line x1="60" y1="70" x2="60" y2="85" stroke="#F59E0B" strokeWidth="2" />
+    <circle cx="60" cy="90" r="5" fill="#F59E0B" />
+    
+    <!-- Cap bottom -->
+    <path d="M40 55V75C40 75 50 85 60 85C70 85 80 75 80 75V55L60 65L40 55Z" fill="#334155" />
+    
+    <!-- Cap details -->
+    <line x1="20" y1="50" x2="20" y2="53" stroke="#475569" strokeWidth="2" />
+    <line x1="100" y1="50" x2="100" y2="53" stroke="#475569" strokeWidth="2" />
+    
+    <!-- Graduation button -->
+    <circle cx="60" cy="30" r="3" fill="#475569" />
+  </g>
+  <defs>
+    <filter id="filter0_d" x="0" y="0" width="120" height="120" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset dy="4"/>
+      <feGaussianBlur stdDeviation="5"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.15 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+</svg> 

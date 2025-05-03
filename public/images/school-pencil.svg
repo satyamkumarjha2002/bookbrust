@@ -1,0 +1,27 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g filter="url(#filter0_d)">
+    <!-- Pencil body -->
+    <rect x="15" y="10" width="50" height="10" rx="1" transform="rotate(45 15 10)" fill="#FBBF24" />
+    <!-- Pencil lead -->
+    <path d="M8.53553 23.5355L15.5355 16.5355L18.3639 19.3639L11.3639 26.3639L8.53553 23.5355Z" fill="#4B5563" />
+    <!-- Eraser -->
+    <rect x="55.1422" y="13.2843" width="10" height="10" rx="1" transform="rotate(45 55.1422 13.2843)" fill="#F87171" />
+    <!-- Metal band -->
+    <rect x="45.1422" y="3.28427" width="10" height="3" rx="0.5" transform="rotate(45 45.1422 3.28427)" fill="#9CA3AF" />
+    <!-- Wood grain lines -->
+    <rect x="22.7279" y="20.0711" width="20" height="1" rx="0.5" transform="rotate(45 22.7279 20.0711)" fill="#D1D5DB" />
+    <rect x="27.7279" y="25.0711" width="20" height="1" rx="0.5" transform="rotate(45 27.7279 25.0711)" fill="#D1D5DB" />
+    <rect x="32.7279" y="30.0711" width="20" height="1" rx="0.5" transform="rotate(45 32.7279 30.0711)" fill="#D1D5DB" />
+  </g>
+  <defs>
+    <filter id="filter0_d" x="0" y="0" width="80" height="80" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset dy="4"/>
+      <feGaussianBlur stdDeviation="4"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+</svg> 

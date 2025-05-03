@@ -1,0 +1,47 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+CODEBASE REVIEW
+• Scan the entire existing codebase before making any changes.
+• Reuse existing components wherever possible to avoid duplication.
+
+DOCUMENTATION & COMMENTING
+• Add clear inline comments for every change, explaining purpose, logic, and dependencies.
+• Create or update external design documentation detailing changes, rationale, and integration approach.
+
+TESTING AND VERIFICATION
+• Run the project after modifications to ensure there are no errors.
+• Develop detailed test cases covering at least 90% of the modified code.
+• Confirm that all tests pass before marking the update as complete.
+
+DATA HANDLING & API PREPARATION
+• Do not hardcode static data within component files.
+• Fetch data via dedicated service files that can later be replaced with real API calls (use dummy data in the stubbed methods for now).
+
+COMPONENT USAGE & STRUCTURE
+• Leverage ShadCN UI components instead of creating custom ones when possible.
+• Break the implementation into small, self‑contained components, each with a single responsibility.
+• Organize components into clearly labeled folders for ease of maintenance.
+
+USER EXPERIENCE (UX) CONSIDERATIONS
+• Prioritize mobile responsiveness while maintaining a high‑quality desktop experience.
+• Design a simple, intuitive UI for school teachers and students with limited technical skills.
+• Keep navigation minimal and straightforward.
+
+PLANNING & APPROVAL
+• Draft a comprehensive design document outlining changes, architecture decisions, and integration points.
+• Start coding only after the design document has been reviewed and approved.
+
+ERROR HANDLING
+• Do not suppress errors—address and fix them immediately.
+• Adopt a fail‑fast approach: stop and resolve issues as soon as they occur.
+
+ADDITIONAL REMINDERS
+• Do not commit code changes directly to Git.
+• When available, use npx instead of npm.
+• Ensure the UI remains simple and intuitive for non‑technical users.
+
+MOST IMPORTANT:
+Whenever you create any modules, provide separate components, views, and everything else for each user type (STUDENT, PARENT, TEACHER, ADMIN).
