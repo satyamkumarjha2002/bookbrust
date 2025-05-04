@@ -11,8 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pencil, BookMarked, FileText, Edit, Plus, MoreVertical, StickyNote, Trash2, Highlighter } from 'lucide-react';
 import { BookNote } from '@/types/reading-features';
-import { noteService } from '@/lib/services/readingFeaturesService';
+import { readingFeaturesService } from '@/lib/services';
 import { Book } from '@/types';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface BookNotesProps {
   book: Book;
@@ -25,6 +26,8 @@ export function BookNotes({ book }: BookNotesProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedNote, setSelectedNote] = useState<BookNote | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form state
   const [noteContent, setNoteContent] = useState('');
@@ -41,15 +44,23 @@ export function BookNotes({ book }: BookNotesProps) {
   ];
   
   useEffect(() => {
-    loadNotes();
-  }, [book.id]);
+    if (book?.id) {
+      loadNotes();
+    }
+  }, [book?.id]);
   
-  const loadNotes = () => {
+  const loadNotes = async () => {
     try {
-      const bookNotes = noteService.getNotesForBook(book.id);
-      setNotes(bookNotes);
-    } catch (error) {
-      console.error('Error loading book notes:', error);
+      setIsLoading(true);
+      setError(null);
+      
+      const bookNotes = await readingFeaturesService.notes.getNotesForBook(book.id);
+      setNotes(Array.isArray(bookNotes) ? bookNotes : []);
+    } catch (err) {
+      console.error('Error loading book notes:', err);
+      setError('Failed to load notes. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -61,6 +72,7 @@ export function BookNotes({ book }: BookNotesProps) {
     setHighlightColor('yellow');
     setSelectedNote(null);
     setIsEditMode(false);
+    setError(null);
   };
   
   const handleOpenNoteDialog = (note?: BookNote) => {
@@ -80,37 +92,69 @@ export function BookNotes({ book }: BookNotesProps) {
     setIsNoteDialogOpen(true);
   };
   
-  const handleSaveNote = () => {
-    if (!noteContent.trim()) return;
+  const handleSaveNote = async () => {
+    if (!noteContent.trim()) {
+      setError('Note content cannot be empty');
+      return;
+    }
     
     try {
-      const page = notePage ? parseInt(notePage, 10) : undefined;
+      setIsLoading(true);
+      setError(null);
+      
+      // Parse page number if provided
+      const pageNumber = notePage ? parseInt(notePage, 10) : undefined;
       
       if (isEditMode && selectedNote) {
-        noteService.updateNote({
-          ...selectedNote,
-          content: noteContent,
-          page,
-          chapter: noteChapter || undefined,
-          isHighlight,
-          color: isHighlight ? highlightColor : undefined
-        });
-      } else {
-        noteService.createNote(
-          book.id,
-          noteContent,
-          isHighlight,
-          page,
-          noteChapter || undefined,
-          isHighlight ? highlightColor : undefined
+        // Update existing note
+        // Use the ID, content, page approach which works with both API and localStorage
+        const result = await readingFeaturesService.notes.updateNote(
+          selectedNote.id, 
+          noteContent.trim(), 
+          pageNumber
         );
+        
+        if (!result) {
+          throw new Error('Failed to update note');
+        }
+      } else {
+        // Create new note
+        // The localStorage implementation doesn't support all these parameters
+        // But we'll try to use them for the API implementation
+        let result;
+        try {
+          // First try with the full API signature
+          result = await readingFeaturesService.notes.createNote(
+            book.id,
+            noteContent.trim(),
+            isHighlight,
+            pageNumber,
+            noteChapter.trim() || undefined,
+            isHighlight ? highlightColor : undefined
+          );
+        } catch (error) {
+          // Fallback to localStorage signature if needed
+          result = await readingFeaturesService.notes.createNote(
+            book.id,
+            noteContent.trim(),
+            pageNumber as any // Type cast to bypass type checking
+          );
+        }
+        
+        if (!result) {
+          throw new Error('Failed to create note');
+        }
       }
       
+      // Close dialog and refresh notes
       setIsNoteDialogOpen(false);
       resetForm();
-      loadNotes();
-    } catch (error) {
-      console.error('Error saving note:', error);
+      await loadNotes();
+    } catch (err) {
+      console.error('Error saving note:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while saving the note');
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -119,16 +163,27 @@ export function BookNotes({ book }: BookNotesProps) {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedNote) return;
     
     try {
-      noteService.deleteNote(selectedNote.id);
+      setIsLoading(true);
+      setError(null);
+      
+      const success = await readingFeaturesService.notes.deleteNote(selectedNote.id);
+      
+      if (!success) {
+        throw new Error('Failed to delete note');
+      }
+      
       setIsDeleteDialogOpen(false);
       setSelectedNote(null);
-      loadNotes();
-    } catch (error) {
-      console.error('Error deleting note:', error);
+      await loadNotes();
+    } catch (err) {
+      console.error('Error deleting note:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while deleting the note');
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -145,10 +200,20 @@ export function BookNotes({ book }: BookNotesProps) {
     if (note.chapter) location.push(`Chapter: ${note.chapter}`);
     if (note.page) location.push(`Page: ${note.page}`);
     
+    const getColorClass = (color: string) => {
+      switch (color) {
+        case 'yellow': return 'bg-yellow-100 border-yellow-400';
+        case 'green': return 'bg-green-100 border-green-400';
+        case 'blue': return 'bg-blue-100 border-blue-400';
+        case 'pink': return 'bg-pink-100 border-pink-400';
+        default: return 'bg-yellow-100 border-yellow-400';
+      }
+    };
+    
     return (
       <div 
         key={note.id}
-        className={`border rounded-md p-4 ${note.isHighlight ? `border-l-4 border-l-${note.color}-400` : ''}`}
+        className={`border rounded-md p-4 ${note.isHighlight ? `border-l-4 ${getColorClass(note.color || 'yellow')}` : ''}`}
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
@@ -185,7 +250,7 @@ export function BookNotes({ book }: BookNotesProps) {
           </DropdownMenu>
         </div>
         
-        <div className={note.isHighlight ? `p-2 rounded bg-${note.color}-100` : ''}>
+        <div className={note.isHighlight ? getColorClass(note.color || 'yellow') + ' p-2 rounded' : ''}>
           <p className="text-sm whitespace-pre-wrap">{note.content}</p>
         </div>
         
@@ -213,6 +278,7 @@ export function BookNotes({ book }: BookNotesProps) {
             <Button 
               size="sm"
               onClick={() => handleOpenNoteDialog()}
+              disabled={isLoading}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Note
@@ -233,25 +299,39 @@ export function BookNotes({ book }: BookNotesProps) {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="all" className="space-y-4">
-              {filteredNotes.length > 0 ? (
-                filteredNotes.map(renderNoteCard)
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    You don't have any notes or highlights for this book yet.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => handleOpenNoteDialog()}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Note
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
+            {isLoading && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
+            
+            {!isLoading && error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            {!isLoading && !error && (
+              <TabsContent value="all" className="space-y-4">
+                {filteredNotes.length > 0 ? (
+                  filteredNotes.map(renderNoteCard)
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      You don't have any notes or highlights for this book yet.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => handleOpenNoteDialog()}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Note
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+            )}
             
             <TabsContent value="notes" className="space-y-4">
               {filteredNotes.length > 0 ? (
@@ -264,13 +344,10 @@ export function BookNotes({ book }: BookNotesProps) {
                   <Button 
                     variant="outline" 
                     className="mt-4"
-                    onClick={() => {
-                      setIsHighlight(false);
-                      handleOpenNoteDialog();
-                    }}
+                    onClick={() => handleOpenNoteDialog()}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Note
+                    Add Your First Note
                   </Button>
                 </div>
               )}
@@ -288,12 +365,13 @@ export function BookNotes({ book }: BookNotesProps) {
                     variant="outline" 
                     className="mt-4"
                     onClick={() => {
+                      resetForm();
                       setIsHighlight(true);
-                      handleOpenNoteDialog();
+                      setIsNoteDialogOpen(true);
                     }}
                   >
                     <Highlighter className="h-4 w-4 mr-2" />
-                    Add Highlight
+                    Add Your First Highlight
                   </Button>
                 </div>
               )}
@@ -302,115 +380,132 @@ export function BookNotes({ book }: BookNotesProps) {
         </CardContent>
       </Card>
       
+      {/* Add/Edit Note Dialog */}
       <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {isEditMode 
-                ? `Edit ${selectedNote?.isHighlight ? 'Highlight' : 'Note'}` 
-                : `Add ${isHighlight ? 'Highlight' : 'Note'}`}
+                ? (isHighlight ? 'Edit Highlight' : 'Edit Note') 
+                : (isHighlight ? 'Add Highlight' : 'Add Note')}
             </DialogTitle>
             <DialogDescription>
               {isHighlight 
-                ? 'Save meaningful quotes and passages' 
-                : 'Record your thoughts and reflections'}
+                ? 'Capture important passages from the book' 
+                : 'Write down your thoughts about the book'}
             </DialogDescription>
           </DialogHeader>
           
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <div className="grid gap-4 py-4">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="page">Page</Label>
-                  <Input 
-                    id="page" 
-                    type="number" 
-                    min="1"
-                    placeholder="Optional"
-                    value={notePage}
-                    onChange={(e) => setNotePage(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="chapter">Chapter</Label>
-                  <Input 
-                    id="chapter" 
-                    placeholder="Optional"
-                    value={noteChapter}
-                    onChange={(e) => setNoteChapter(e.target.value)}
-                  />
+            <div className="flex items-center">
+              <Label htmlFor="is-highlight" className="mr-2">Type:</Label>
+              <div className="flex space-x-4">
+                <Label
+                  htmlFor="note-type-note"
+                  className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer ${!isHighlight ? 'bg-primary/10 border-primary' : ''}`}
+                  onClick={() => setIsHighlight(false)}
+                >
+                  <StickyNote className="h-4 w-4" />
+                  <span>Note</span>
+                </Label>
+                <Label
+                  htmlFor="note-type-highlight"
+                  className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer ${isHighlight ? 'bg-primary/10 border-primary' : ''}`}
+                  onClick={() => setIsHighlight(true)}
+                >
+                  <Highlighter className="h-4 w-4" />
+                  <span>Highlight</span>
+                </Label>
+              </div>
+            </div>
+            
+            {isHighlight && (
+              <div className="grid gap-2">
+                <Label>Highlight Color:</Label>
+                <div className="flex space-x-2">
+                  {colors.map(color => (
+                    <div
+                      key={color.value}
+                      className={`w-8 h-8 rounded-full ${color.class} cursor-pointer ${
+                        highlightColor === color.value ? 'ring-2 ring-primary ring-offset-2' : ''
+                      }`}
+                      onClick={() => setHighlightColor(color.value)}
+                      title={color.name}
+                    />
+                  ))}
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="content">{isHighlight ? 'Highlighted text' : 'Note'}</Label>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="isHighlight" className="text-sm cursor-pointer">
-                      Highlight
-                    </Label>
-                    <input 
-                      type="checkbox"
-                      id="isHighlight"
-                      checked={isHighlight}
-                      onChange={(e) => setIsHighlight(e.target.checked)}
-                      className="rounded"
-                    />
-                  </div>
-                </div>
-                <Textarea 
-                  id="content" 
-                  rows={5}
-                  placeholder={
-                    isHighlight 
-                      ? 'Enter the text you want to highlight' 
-                      : 'Write your thoughts about this book'
-                  }
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
+            )}
+            
+            <div className="grid gap-2">
+              <Label htmlFor="note-content">Content:</Label>
+              <Textarea
+                id="note-content"
+                rows={5}
+                placeholder={isHighlight ? "Enter the text you want to highlight..." : "Write your note here..."}
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="note-chapter">Chapter (optional):</Label>
+                <Input
+                  id="note-chapter"
+                  placeholder="e.g. Chapter 5"
+                  value={noteChapter}
+                  onChange={(e) => setNoteChapter(e.target.value)}
                 />
               </div>
-              
-              {isHighlight && (
-                <div className="space-y-2">
-                  <Label>Highlight color</Label>
-                  <div className="flex space-x-2">
-                    {colors.map(color => (
-                      <button 
-                        key={color.value}
-                        type="button"
-                        className={`w-6 h-6 rounded-full ${color.class} ${
-                          highlightColor === color.value 
-                            ? 'ring-2 ring-primary ring-offset-2' 
-                            : ''
-                        }`}
-                        title={color.name}
-                        onClick={() => setHighlightColor(color.value)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="grid gap-2">
+                <Label htmlFor="note-page">Page (optional):</Label>
+                <Input
+                  id="note-page"
+                  type="number"
+                  placeholder="e.g. 42"
+                  value={notePage}
+                  onChange={(e) => setNotePage(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setIsNoteDialogOpen(false);
                 resetForm();
               }}
+              disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveNote}>
-              {isEditMode ? 'Update' : 'Save'}
+            <Button 
+              onClick={handleSaveNote}
+              disabled={isLoading || !noteContent.trim()}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <span className="animate-spin h-4 w-4 mr-2 border-2 border-b-transparent rounded-full"></span>
+                  Saving...
+                </span>
+              ) : (
+                isEditMode ? 'Update' : 'Save'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -420,9 +515,32 @@ export function BookNotes({ book }: BookNotesProps) {
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              disabled={isLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <span className="animate-spin h-4 w-4 mr-2 border-2 border-b-transparent rounded-full"></span>
+                  Deleting...
+                </span>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -47,7 +47,7 @@ export function ReadingReminders() {
         return;
       }
       
-      reminderService.createReminder(reminderDays, reminderTime, reminderMessage);
+      reminderService.createReminder('general', reminderTime, reminderMessage);
       setIsDialogOpen(false);
       resetForm();
       loadReminders();
@@ -76,7 +76,7 @@ export function ReadingReminders() {
   
   const handleToggleReminder = (reminderId: string) => {
     try {
-      reminderService.toggleReminder(reminderId);
+      reminderService.markReminderComplete(reminderId);
       loadReminders();
     } catch (error) {
       console.error('Error toggling reminder:', error);

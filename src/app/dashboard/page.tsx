@@ -11,7 +11,7 @@ import {
 import { BOOK_ADDED_EVENT } from '@/components/books/BookRecommendations';
 import { BookshelfTabs } from '@/components/books/BookshelfTabs';
 import { bookService, userBookService, readingFeaturesService, authService } from '@/lib/services';
-import { DashboardStats, BookStatus, Book } from '@/types';
+import { DashboardStats, BookStatus, Book, UserBook } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   BookOpenIcon, 
@@ -21,7 +21,6 @@ import {
   ChevronDownIcon, 
   CheckIcon 
 } from 'lucide-react';
-import { useSeedData } from '@/hooks/useSeedData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -37,6 +36,16 @@ interface StatCardProps {
   value: number;
   icon: React.ReactNode;
   description: string;
+}
+
+// Define a proper interface for the lastReadingBook state
+interface LastReadingBookData {
+  book: Book;
+  bookId: string;
+  dateUpdated: string;
+  notes?: string;
+  status: BookStatus;
+  rating?: number;
 }
 
 function StatCard({ title, value, icon, description }: StatCardProps) {
@@ -60,8 +69,6 @@ function StatCard({ title, value, icon, description }: StatCardProps) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  // Use the seed data hook to initialize book data
-  const dataSeeded = useSeedData();
   
   const [stats, setStats] = useState<DashboardStats>({
     totalBooksRead: 0,
@@ -69,73 +76,161 @@ export default function DashboardPage() {
     wantToRead: 0
   });
   const [trendingBooks, setTrendingBooks] = useState<Book[]>([]);
-  const [lastReadingBook, setLastReadingBook] = useState<any>(null);
+  const [lastReadingBook, setLastReadingBook] = useState<LastReadingBookData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isClient, setIsClient] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Check if we're on the client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  // Track render count for debugging
+  const renderCountRef = React.useRef(0);
+  renderCountRef.current += 1;
+  console.log('Dashboard render count:', renderCountRef.current);
   
-  useEffect(() => {
-    // Only proceed if we're on the client side
-    if (!isClient) return;
-    
-    // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    
-    // Load dashboard data only when data is seeded
-    if (dataSeeded) {
-      loadDashboardData();
-      setIsLoading(false);
-    }
-  }, [router, isClient, dataSeeded]);
-  
-  const loadDashboardData = () => {
+  // Function to load dashboard data
+  const loadDashboardData = async () => {
+    const loadId = Date.now(); // Generate unique ID for this load call
+    console.log(`[${loadId}] loadDashboardData started`);
     try {
-      // Load stats
-      const dashboardStats = userBookService.getDashboardStats();
+      // Clear any previous errors
+      setError(null);
+      
+      // Load dashboard statistics
+      console.log(`[${loadId}] Calling getDashboardStats`);
+      const dashboardStats = await userBookService.getDashboardStats();
+      console.log(`[${loadId}] getDashboardStats result:`, dashboardStats);
       setStats(dashboardStats);
       
       // Load last reading book
-      const lastBook = userBookService.getLastReadingBook();
+      console.log(`[${loadId}] Calling getLastReadingBook`);
+      const lastBook = await userBookService.getLastReadingBook();
+      console.log(`[${loadId}] getLastReadingBook result:`, lastBook);
+      
       if (lastBook) {
-        const bookDetails = bookService.getBookById(lastBook.bookId);
+        console.log(`[${loadId}] Calling getBookById for lastBook:`, lastBook.bookId);
+        const bookDetails = await bookService.getBookById(lastBook.bookId);
+        console.log(`[${loadId}] getBookById result:`, bookDetails);
+        
         if (bookDetails) {
+          console.log(`[${loadId}] Setting lastReadingBook state`);
           setLastReadingBook({
             ...lastBook,
             book: bookDetails
-          });
+          } as LastReadingBookData);
         }
       }
       
       // Load trending books
-      const trending = bookService.getTrendingBooks(5);
+      console.log(`[${loadId}] Calling getTrendingBooks`);
+      const trending = await bookService.getTrendingBooks(5);
+      console.log(`[${loadId}] getTrendingBooks result:`, trending.length, 'books');
       setTrendingBooks(trending);
-
+      
       // Update reading challenge progress
-      readingFeaturesService.challenges.updateProgress();
+      try {
+        console.log(`[${loadId}] Calling updateProgress with count:`, dashboardStats.totalBooksRead);
+        await Promise.resolve(readingFeaturesService.challenges.updateProgress(dashboardStats.totalBooksRead));
+        console.log(`[${loadId}] updateProgress completed`);
+      } catch (error) {
+        console.error(`[${loadId}] Error updating reading challenge:`, error);
+      }
+      
+      console.log(`[${loadId}] loadDashboardData completed successfully`);
+      return dashboardStats.totalBooksRead;
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error(`[${loadId}] Error loading dashboard data:`, error);
+      setError('Failed to load dashboard data. Please try again later.');
+      // Set default/empty values
+      setStats({
+        totalBooksRead: 0,
+        currentlyReading: 0,
+        wantToRead: 0
+      });
+      setTrendingBooks([]);
+      return 0;
     }
   };
 
+  // Load data when component mounts
+  useEffect(() => {
+    // Only proceed if we're on the client side
+    
+    // Check if user is authenticated
+    if (!authService.isAuthenticated()) {
+      console.log('User not authenticated, redirecting to login');
+      router.push('/login');
+      return;
+    }
+    
+    console.log('Setting up data loading...');
+    
+    // Flag to prevent state updates after unmount
+    let isMounted = true;
+    
+    console.log('Starting data load process...');
+    loadDashboardData()
+      .then((result) => {
+        console.log('Data loading completed with result:', result);
+        if (isMounted) {
+          console.log('Setting loading state to false');
+          setIsLoading(false);
+        } else {
+          console.log('Component unmounted, skipping state update');
+        }
+      })
+      .catch((error) => {
+        console.error('Error in dashboard data loading:', error);
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+    
+    return () => {
+      console.log('Dashboard useEffect cleanup running');
+      isMounted = false;
+    };
+  }, []); // Intentionally excluding router and other values
+  
+  const handleAddBook = async (bookId: string, status: BookStatus) => {
+    console.log('handleAddBook called with:', { bookId, status });
+    try {
+      console.log('Calling userBookService.addUserBook');
+      await userBookService.addUserBook(bookId, status);
+      
+      // Dispatch custom event
+      console.log('Dispatching BOOK_ADDED_EVENT');
+      const event = new CustomEvent(BOOK_ADDED_EVENT, { 
+        detail: { bookId, status } 
+      });
+      window.dispatchEvent(event);
+      
+      // Reload dashboard data
+      console.log('Reloading dashboard data after book add');
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error adding book:', error);
+    }
+  };
+  
   const navigateToBookDetail = (bookId: string) => {
     router.push(`/books/${bookId}`);
   };
   
-  // Show loading state when on server or still loading
-  if (!isClient || isLoading) {
+  // Show error state if we have an error
+  if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center h-[70vh]">
-        <div className="text-center">
-          <div className="spinner mb-4"></div>
-          <p>Loading your dashboard...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="p-6 border rounded-lg bg-red-50 text-red-800 mb-6">
+          <h2 className="text-xl font-bold mb-2">Error</h2>
+          <p>{error}</p>
+          <Button onClick={() => {
+            setIsLoading(true);
+            loadDashboardData().then(() => setIsLoading(false));
+          }} className="mt-4">
+            Try Again
+          </Button>
         </div>
+        
+        {/* Still show the bookshelves even if we have an error */}
+        <BookshelfTabs />
       </div>
     );
   }
@@ -146,7 +241,7 @@ export default function DashboardPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Reading Challenge - NEW */}
+          {/* Reading Challenge */}
           <ReadingChallengeComponent />
           
           {/* Stats Cards */}
@@ -171,7 +266,7 @@ export default function DashboardPage() {
             />
           </div>
           
-          {/* Continue Reading Section - Improved */}
+          {/* Continue Reading Section */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Continue Reading</h2>
             {lastReadingBook && lastReadingBook.book ? (
@@ -225,14 +320,17 @@ export default function DashboardPage() {
             )}
           </div>
         
-          {/* Trending Books - Improved */}
+          {/* Trending Books */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Trending Books</h2>
               <Button 
                 variant="link" 
                 className="text-primary"
-                onClick={() => loadDashboardData()}
+                onClick={() => {
+                  setIsLoading(true);
+                  loadDashboardData().then(() => setIsLoading(false));
+                }}
               >
                 <TrendingUpIcon className="h-4 w-4 mr-1" />
                 Refresh
@@ -275,15 +373,7 @@ export default function DashboardPage() {
                             <DropdownMenuItem 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                userBookService.addUserBook(book.id, BookStatus.WANT_TO_READ);
-                                
-                                // Dispatch a custom event to notify other components that a book was added
-                                const event = new CustomEvent(BOOK_ADDED_EVENT, { 
-                                  detail: { bookId: book.id, status: BookStatus.WANT_TO_READ } 
-                                });
-                                window.dispatchEvent(event);
-                                
-                                loadDashboardData();
+                                handleAddBook(book.id, BookStatus.WANT_TO_READ);
                               }}
                             >
                               <BookmarkIcon className="h-4 w-4 mr-2" />
@@ -292,15 +382,7 @@ export default function DashboardPage() {
                             <DropdownMenuItem 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                userBookService.addUserBook(book.id, BookStatus.READING);
-                                
-                                // Dispatch a custom event to notify other components that a book was added
-                                const event = new CustomEvent(BOOK_ADDED_EVENT, { 
-                                  detail: { bookId: book.id, status: BookStatus.READING } 
-                                });
-                                window.dispatchEvent(event);
-                                
-                                loadDashboardData();
+                                handleAddBook(book.id, BookStatus.READING);
                               }}
                             >
                               <BookOpenIcon className="h-4 w-4 mr-2" />
@@ -309,15 +391,7 @@ export default function DashboardPage() {
                             <DropdownMenuItem 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                userBookService.addUserBook(book.id, BookStatus.FINISHED);
-                                
-                                // Dispatch a custom event to notify other components that a book was added
-                                const event = new CustomEvent(BOOK_ADDED_EVENT, { 
-                                  detail: { bookId: book.id, status: BookStatus.FINISHED } 
-                                });
-                                window.dispatchEvent(event);
-                                
-                                loadDashboardData();
+                                handleAddBook(book.id, BookStatus.FINISHED);
                               }}
                             >
                               <CheckIcon className="h-4 w-4 mr-2" />
@@ -343,13 +417,13 @@ export default function DashboardPage() {
         </div>
         
         <div className="space-y-8">
-          {/* Reading Insights - NEW */}
+          {/* Reading Insights */}
           <ReadingInsights />
           
-          {/* Book Recommendations - NEW */}
+          {/* Book Recommendations */}
           <BookRecommendations />
           
-          {/* Reading Reminders - NEW */}
+          {/* Reading Reminders */}
           <ReadingReminders />
         </div>
       </div>

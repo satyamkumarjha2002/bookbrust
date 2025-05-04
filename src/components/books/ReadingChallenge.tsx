@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Trophy, Book, Target, Plus, Edit, Check } from 'lucide-react';
 import { ReadingChallenge } from '@/types/reading-features';
-import { challengeService } from '@/lib/services/readingFeaturesService';
+import { readingFeaturesService } from '@/lib/services';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ReadingChallengeComponent() {
@@ -15,63 +15,84 @@ export function ReadingChallengeComponent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [targetBooks, setTargetBooks] = useState(12); // Default to 1 book per month
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadChallenge();
   }, []);
 
-  const loadChallenge = () => {
-    const currentChallenge = challengeService.getCurrentChallenge();
-    setChallenge(currentChallenge);
-    
-    if (currentChallenge) {
-      // Update progress to ensure it's current
-      challengeService.updateProgress();
-      // Reload the challenge with updated counts
-      setChallenge(challengeService.getCurrentChallenge());
+  const loadChallenge = async () => {
+    try {
+      setIsLoading(true);
+      const currentChallenge = await readingFeaturesService.challenges.getCurrentChallenge();
+      setChallenge(currentChallenge);
+      
+      if (currentChallenge) {
+        // If we have a challenge, update target books to match current target
+        setTargetBooks(currentChallenge.targetBooks);
+      }
+    } catch (error) {
+      console.error('Error loading challenge:', error);
+      setError('Failed to load reading challenge');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCreateChallenge = () => {
+  const handleCreateChallenge = async () => {
     try {
+      setIsLoading(true);
       if (targetBooks <= 0) {
         setError('Please enter a number greater than 0');
         return;
       }
       
-      const newChallenge = challengeService.createChallenge(targetBooks);
-      setChallenge(newChallenge);
-      setIsDialogOpen(false);
-      setError('');
+      const newChallenge = await readingFeaturesService.challenges.createChallenge(targetBooks);
+      if (newChallenge) {
+        setChallenge(newChallenge);
+        setIsDialogOpen(false);
+        setError('');
+      } else {
+        setError('Failed to create challenge');
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('An error occurred creating the challenge');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleUpdateChallenge = () => {
+  const handleUpdateChallenge = async () => {
     if (!challenge) return;
     
     try {
+      setIsLoading(true);
       if (targetBooks <= 0) {
         setError('Please enter a number greater than 0');
         return;
       }
       
       const updatedChallenge = { ...challenge, targetBooks };
-      challengeService.updateChallenge(updatedChallenge);
-      setChallenge(updatedChallenge);
-      setIsDialogOpen(false);
-      setError('');
+      const result = await readingFeaturesService.challenges.updateChallenge(updatedChallenge);
+      if (result) {
+        setChallenge(result);
+        setIsDialogOpen(false);
+        setError('');
+      } else {
+        setError('Failed to update challenge');
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('An error occurred updating the challenge');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 

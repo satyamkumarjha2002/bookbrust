@@ -169,21 +169,22 @@ export function BookshelfTabs() {
   
   const loadBooks = async () => {
     // Get user books
-    const allUserBooks = userBookService.getUserBooks();
+    const allUserBooks = await userBookService.getUserBooks();
     
     // Map to include book details
-    const booksWithDetails = allUserBooks
-      .map(userBook => {
-        const book = bookService.getBookById(userBook.bookId);
+    const booksWithDetails = await Promise.all(
+      allUserBooks.map(async userBook => {
+        const book = await bookService.getBookById(userBook.bookId);
         if (!book) return null;
         return {
           ...userBook,
           book
         } as BookshelfItem;
       })
-      .filter((item): item is BookshelfItem => item !== null);
+    );
     
-    setUserBooks(booksWithDetails);
+    // Filter out null values
+    setUserBooks(booksWithDetails.filter((item): item is BookshelfItem => item !== null));
   };
   
   const handleEditClick = (userBook: BookshelfItem) => {

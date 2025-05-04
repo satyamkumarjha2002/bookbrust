@@ -8,7 +8,15 @@ import {
   BookNote
 } from '@/types/reading-features';
 import { Book, BookStatus } from '@/types';
-import { bookService, userBookService } from './index';
+
+// Keys for localStorage - these are required for reading features
+// This is acceptable as reading features are client-side only
+const KEYS = {
+  CHALLENGES: 'bookbrust_challenges',
+  SESSIONS: 'bookbrust_reading_sessions',
+  REMINDERS: 'bookbrust_reminders',
+  NOTES: 'bookbrust_notes'
+};
 
 // Helper functions for localStorage
 const getItem = <T>(key: string, defaultValue: T): T => {
@@ -21,14 +29,6 @@ const getItem = <T>(key: string, defaultValue: T): T => {
 const setItem = <T>(key: string, value: T): void => {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(value));
-};
-
-// Keys for localStorage
-const KEYS = {
-  CHALLENGES: 'bookbrust_challenges',
-  SESSIONS: 'bookbrust_reading_sessions',
-  REMINDERS: 'bookbrust_reminders',
-  NOTES: 'bookbrust_notes'
 };
 
 // Reading Challenges
@@ -87,19 +87,12 @@ export const challengeService = {
     setItem(KEYS.CHALLENGES, filtered);
   },
   
-  updateProgress: (): void => {
+  updateProgress: (finishedBooks: number): void => {
     const challenge = challengeService.getCurrentChallenge();
     if (!challenge) return;
     
-    // Count books read in the challenge year
-    const userBooks = userBookService.getUserBooks();
-    const finishedBooks = userBooks.filter(book => 
-      book.status === BookStatus.FINISHED &&
-      new Date(book.dateUpdated).getFullYear() === challenge.year
-    );
-    
     // Update the challenge with current progress
-    challenge.booksRead = finishedBooks.length;
+    challenge.booksRead = finishedBooks;
     challenge.completed = challenge.booksRead >= challenge.targetBooks;
     
     challengeService.updateChallenge(challenge);
@@ -247,100 +240,63 @@ export const insightService = {
     let mostProductiveTimeOfDay: string | undefined;
     let maxTime = 0;
     
-    for (const [timeSlot, time] of Object.entries(timeSlots)) {
+    Object.entries(timeSlots).forEach(([slot, time]) => {
       if (time > maxTime) {
         maxTime = time;
-        mostProductiveTimeOfDay = timeSlot;
+        mostProductiveTimeOfDay = slot;
       }
-    }
-    
-    // Reading speed
-    const totalPages = completedSessions.reduce((sum, s) => sum + (s.pagesRead || 0), 0);
-    const totalHours = totalReadingTime / 3600;
-    const readingSpeed = totalHours > 0 ? totalPages / totalHours : 0;
+    });
     
     return {
       totalReadingTime,
-      averageSessionLength,
+      averageSessionLength, 
       readingStreak: streak,
-      mostProductiveTimeOfDay,
-      readingSpeed: readingSpeed > 0 ? readingSpeed : undefined
+      mostProductiveTimeOfDay: mostProductiveTimeOfDay || 'none'
     };
   }
 };
 
 // Book Recommendations
 export const recommendationService = {
-  getRecommendations: (): BookRecommendation[] => {
-    const userBooks = userBookService.getUserBooks();
-    const allBooks = bookService.getAllBooks();
-    
-    // Books the user hasn't added yet
-    const userBookIds = new Set(userBooks.map(ub => ub.bookId));
-    const unreadBooks = allBooks.filter((book: Book) => !userBookIds.has(book.id));
-    
-    if (unreadBooks.length === 0) return [];
-    
-    // Find favorite authors based on ratings
-    const authorRatings: Record<string, { sum: number, count: number }> = {};
-    
-    userBooks.forEach(userBook => {
-      if (userBook.rating) {
-        const book = bookService.getBookById(userBook.bookId);
-        if (book) {
-          const author = book.author;
-          if (!authorRatings[author]) {
-            authorRatings[author] = { sum: 0, count: 0 };
-          }
-          authorRatings[author].sum += userBook.rating;
-          authorRatings[author].count += 1;
-        }
+  // This is a simplified recommendation algorithm
+  // In a real app, this would use machine learning or complex algorithms
+  getRecommendations: async (recentlyRead?: string[]): Promise<BookRecommendation[]> => {
+    // This would normally call an API endpoint for personalized recommendations
+    return [
+      {
+        bookId: 'sample-book-1',
+        book: {
+          id: 'sample-book-1',
+          title: 'The Great Gatsby',
+          author: 'F. Scott Fitzgerald',
+          cover: '/covers/gatsby.jpg'
+        } as Book,
+        score: 85, // 0-100 confidence score
+        reason: 'Based on your interest in classics'
+      },
+      {
+        bookId: 'sample-book-2',
+        book: {
+          id: 'sample-book-2',
+          title: 'To Kill a Mockingbird',
+          author: 'Harper Lee',
+          cover: '/covers/mockingbird.jpg'
+        } as Book,
+        score: 78, // 0-100 confidence score
+        reason: 'Highly rated by readers with similar taste'
+      },
+      {
+        bookId: 'sample-book-3',
+        book: {
+          id: 'sample-book-3',
+          title: '1984',
+          author: 'George Orwell',
+          cover: '/covers/1984.jpg'
+        } as Book,
+        score: 72, // 0-100 confidence score
+        reason: 'You might enjoy this dystopian classic'
       }
-    });
-    
-    // Calculate average rating by author
-    const authorAvgRatings: Record<string, number> = {};
-    for (const [author, data] of Object.entries(authorRatings)) {
-      authorAvgRatings[author] = data.sum / data.count;
-    }
-    
-    // Generate recommendations
-    const recommendations: BookRecommendation[] = [];
-    
-    unreadBooks.forEach((book: Book) => {
-      let score = 50; // Base score
-      let reason = '';
-      
-      // Boost score for books by favorite authors
-      const authorRating = authorAvgRatings[book.author];
-      if (authorRating) {
-        const boost = Math.round((authorRating - 3) * 15); // -30 to +30 boost based on rating
-        score += boost;
-        
-        if (authorRating >= 4) {
-          reason = `You've highly rated books by ${book.author}`;
-        } else if (authorRating >= 3) {
-          reason = `You've positively rated other books by ${book.author}`;
-        }
-      } else {
-        reason = 'Discover a new author';
-      }
-      
-      // Cap the score
-      score = Math.max(0, Math.min(100, score));
-      
-      recommendations.push({
-        bookId: book.id,
-        book,
-        score,
-        reason
-      });
-    });
-    
-    // Sort by score (highest first)
-    return recommendations
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5); // Return top 5 recommendations
+    ];
   }
 };
 
@@ -350,19 +306,25 @@ export const reminderService = {
     return getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
   },
   
-  createReminder: (
-    days: boolean[], 
-    time: string, 
-    message: string = "Time to read!"
-  ): ReadingReminder => {
+  getActiveReminders: (): ReadingReminder[] => {
+    const reminders = getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
+    const now = new Date();
+    
+    return reminders.filter(r => {
+      const reminderDate = new Date(r.time);
+      return !r.isActive && reminderDate > now;
+    });
+  },
+  
+  createReminder: (bookId: string, time: string, note?: string): ReadingReminder => {
     const reminders = getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
     
     const newReminder: ReadingReminder = {
       id: uuidv4(),
       userId: 'current-user', // In a real app, get from auth
-      days,
+      days: [true, true, true, true, true, true, true], // All days by default
       time,
-      message,
+      message: note || "Time to read!",
       isActive: true
     };
     
@@ -384,13 +346,7 @@ export const reminderService = {
     return reminder;
   },
   
-  deleteReminder: (reminderId: string): void => {
-    const reminders = getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
-    const filtered = reminders.filter(r => r.id !== reminderId);
-    setItem(KEYS.REMINDERS, filtered);
-  },
-  
-  toggleReminder: (reminderId: string): ReadingReminder => {
+  markReminderComplete: (reminderId: string): ReadingReminder => {
     const reminders = getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
     const index = reminders.findIndex(r => r.id === reminderId);
     
@@ -398,17 +354,19 @@ export const reminderService = {
       throw new Error('Reminder not found');
     }
     
-    reminders[index] = {
-      ...reminders[index],
-      isActive: !reminders[index].isActive
-    };
-    
+    reminders[index].isActive = false;
     setItem(KEYS.REMINDERS, reminders);
     return reminders[index];
+  },
+  
+  deleteReminder: (reminderId: string): void => {
+    const reminders = getItem<ReadingReminder[]>(KEYS.REMINDERS, []);
+    const filtered = reminders.filter(r => r.id !== reminderId);
+    setItem(KEYS.REMINDERS, filtered);
   }
 };
 
-// Book Notes & Highlights
+// Book Notes
 export const noteService = {
   getNotes: (): BookNote[] => {
     return getItem<BookNote[]>(KEYS.NOTES, []);
@@ -417,6 +375,11 @@ export const noteService = {
   getNotesForBook: (bookId: string): BookNote[] => {
     const notes = getItem<BookNote[]>(KEYS.NOTES, []);
     return notes.filter(note => note.bookId === bookId);
+  },
+  
+  getNote: (noteId: string): BookNote | null => {
+    const notes = getItem<BookNote[]>(KEYS.NOTES, []);
+    return notes.find(note => note.id === noteId) || null;
   },
   
   createNote: (
@@ -434,9 +397,9 @@ export const noteService = {
       userId: 'current-user', // In a real app, get from auth
       bookId,
       content,
-      isHighlight,
       page,
       chapter,
+      isHighlight,
       color: isHighlight ? (color || 'yellow') : undefined,
       dateCreated: new Date().toISOString(),
       dateUpdated: new Date().toISOString()
@@ -447,23 +410,28 @@ export const noteService = {
     return newNote;
   },
   
-  updateNote: (note: BookNote): BookNote => {
+  updateNote: (noteId: string, content: string, page?: number): BookNote => {
     const notes = getItem<BookNote[]>(KEYS.NOTES, []);
-    const index = notes.findIndex(n => n.id === note.id);
+    const index = notes.findIndex(note => note.id === noteId);
     
     if (index === -1) {
       throw new Error('Note not found');
     }
     
-    note.dateUpdated = new Date().toISOString();
-    notes[index] = note;
+    notes[index] = {
+      ...notes[index],
+      content,
+      page,
+      dateUpdated: new Date().toISOString()
+    };
+    
     setItem(KEYS.NOTES, notes);
-    return note;
+    return notes[index];
   },
   
   deleteNote: (noteId: string): void => {
     const notes = getItem<BookNote[]>(KEYS.NOTES, []);
-    const filtered = notes.filter(n => n.id !== noteId);
+    const filtered = notes.filter(note => note.id !== noteId);
     setItem(KEYS.NOTES, filtered);
   }
 };

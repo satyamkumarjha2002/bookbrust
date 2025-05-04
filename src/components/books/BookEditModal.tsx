@@ -13,29 +13,30 @@ import { Trash2Icon } from 'lucide-react';
 
 type BookshelfItem = UserBook & { book: Book };
 
-interface BookEditModalProps {
+type BookEditModalProps = {
   isOpen: boolean;
   onClose: () => void;
   userBook: BookshelfItem;
   onSave: () => void;
-}
+};
 
 export function BookEditModal({ isOpen, onClose, userBook, onSave }: BookEditModalProps) {
-  const [status, setStatus] = useState(userBook.status);
-  const [notes, setNotes] = useState(userBook.notes || '');
-  const [rating, setRating] = useState(userBook.rating || 0);
+  // State for form fields
+  const [status, setStatus] = useState<BookStatus>(userBook.status);
+  const [rating, setRating] = useState<number | undefined>(userBook.rating);
+  const [notes, setNotes] = useState<string | undefined>(userBook.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   
-  const handleSave = () => {
+  // Handle form submission
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     
     try {
-      userBookService.updateUserBook(userBook.id, {
+      await userBookService.updateUserBook(userBook.id, {
         status,
-        notes,
         rating,
-        dateUpdated: new Date().toISOString()
+        notes: notes?.trim() || undefined,
       });
       
       onSave();
@@ -46,130 +47,122 @@ export function BookEditModal({ isOpen, onClose, userBook, onSave }: BookEditMod
     }
   };
   
-  const handleDelete = () => {
+  // Handle book deletion
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    
     try {
-      userBookService.removeUserBook(userBook.id);
+      await userBookService.removeUserBook(userBook.id);
+      setIsDeleteAlertOpen(false);
       onSave();
     } catch (error) {
-      console.error('Error deleting book:', error);
+      console.error('Error removing book:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  const handleRatingChange = (value: string) => {
-    setRating(parseInt(value, 10));
-  };
-  
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Book</DialogTitle>
-        </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="flex items-start gap-4">
-            <img 
-              src={userBook.book.coverUrl || '/images/default-book-cover.jpg'} 
-              alt={userBook.book.title}
-              className="w-20 h-28 object-cover rounded-sm"
-            />
-            <div>
-              <h3 className="font-medium">{userBook.book.title}</h3>
-              <p className="text-sm text-muted-foreground">{userBook.book.author}</p>
+    <>
+      <Dialog open={isOpen} onOpenChange={isOpen => !isOpen && onClose()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Book</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center">
+              <div className="w-16 h-24 mr-4 overflow-hidden rounded-sm">
+                <img 
+                  src={userBook.book.coverUrl || '/images/default-book-cover.jpg'} 
+                  alt={userBook.book.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <h3 className="font-medium">{userBook.book.title}</h3>
+                <p className="text-sm text-muted-foreground">{userBook.book.author}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={status} 
+                onValueChange={(value) => setStatus(value as BookStatus)}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={BookStatus.WANT_TO_READ}>Want to Read</SelectItem>
+                  <SelectItem value={BookStatus.READING}>Currently Reading</SelectItem>
+                  <SelectItem value={BookStatus.FINISHED}>Finished</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="rating">Rating</Label>
+              <StarRating 
+                value={rating || 0} 
+                onChange={setRating}
+                size="md"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea 
+                id="notes" 
+                value={notes} 
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add your personal notes about this book..."
+                rows={4}
+              />
             </div>
           </div>
           
-          <div className="grid gap-2">
-            <Label htmlFor="status">Status</Label>
-            <Select 
-              value={status} 
-              onValueChange={(value) => setStatus(value as BookStatus)}
-            >
-              <SelectTrigger id="status">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={BookStatus.READING}>Reading</SelectItem>
-                <SelectItem value={BookStatus.FINISHED}>Finished</SelectItem>
-                <SelectItem value={BookStatus.WANT_TO_READ}>Want to Read</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="rating">Rating</Label>
-            <Select 
-              value={rating.toString()} 
-              onValueChange={handleRatingChange}
-            >
-              <SelectTrigger id="rating">
-                <SelectValue placeholder="Select a rating" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">No rating</SelectItem>
-                <SelectItem value="1">★</SelectItem>
-                <SelectItem value="2">★★</SelectItem>
-                <SelectItem value="3">★★★</SelectItem>
-                <SelectItem value="4">★★★★</SelectItem>
-                <SelectItem value="5">★★★★★</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add your notes about this book"
-              rows={4}
-            />
-          </div>
-        </div>
-        
-        <DialogFooter className="flex justify-between items-center">
-          <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-red-500">
-                <Trash2Icon className="h-4 w-4 mr-1" />
-                Remove
+          <DialogFooter className="flex justify-between">
+            <div>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setIsDeleteAlertOpen(true)}>
+                  <Trash2Icon className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+            </div>
+            
+            <div className="space-x-2">
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Cancel
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove "{userBook.book.title}" from your bookshelf. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
-                  Remove
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              type="button"
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove "{userBook.book.title}" from your bookshelf.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSave}
-              disabled={isSubmitting}
-              type="button"
-            >
-              Save
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              {isSubmitting ? 'Removing...' : 'Remove Book'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 } 

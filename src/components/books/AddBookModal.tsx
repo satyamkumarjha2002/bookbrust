@@ -16,7 +16,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useSeedData } from '@/hooks/useSeedData';
 import { seedBooksData } from '@/lib/seedData';
 
 interface AddBookModalProps {
@@ -32,8 +31,6 @@ export function AddBookModal({
   onSave,
   initialStatus = BookStatus.WANT_TO_READ 
 }: AddBookModalProps) {
-  // Use seed data hook to ensure books are loaded
-  useSeedData();
   
   // State for "Add New Book" tab
   const [title, setTitle] = useState('');
@@ -62,12 +59,12 @@ export function AddBookModal({
     }
   }, [isOpen, activeTab]);
 
-  const loadExistingBooks = () => {
+  const loadExistingBooks = async () => {
     try {
       // Force seed if needed
       seedBooksData();
       
-      const allBooks = bookService.getAllBooks();
+      const allBooks = await bookService.getAllBooks();
       if (allBooks.length === 0) {
         console.log("No books found in localStorage");
         setDebugInfo("No books found in localStorage");
@@ -77,9 +74,9 @@ export function AddBookModal({
       }
       
       // Filter out books that are already in the user's collection
-      const userBooks = userBookService.getUserBooks();
-      const userBookIds = userBooks.map(ub => ub.bookId);
-      const availableBooks = allBooks.filter(book => !userBookIds.includes(book.id));
+      const userBooks = await userBookService.getUserBooks();
+      const userBookIds = userBooks.map((ub) => ub.bookId);
+      const availableBooks = allBooks.filter((book) => !userBookIds.includes(book.id));
       setExistingBooks(availableBooks);
     } catch (error) {
       console.error("Error loading books:", error);
@@ -123,7 +120,7 @@ export function AddBookModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmitNewBook = () => {
+  const handleSubmitNewBook = async () => {
     if (!validate()) {
       return;
     }
@@ -132,7 +129,7 @@ export function AddBookModal({
     
     try {
       // Create the book
-      const newBook = bookService.addBook({
+      const newBook = await bookService.addBook({
         title: title.trim(),
         author: author.trim(),
         coverUrl: coverUrl.trim() || undefined,
@@ -140,8 +137,14 @@ export function AddBookModal({
         description: description.trim() || undefined,
       });
       
-      // Add the book to the user's collection
-      userBookService.addUserBook(
+      // Check if the book was created successfully
+      if (!newBook) {
+        console.error('Failed to create book');
+        return;
+      }
+      
+      // Now TypeScript knows newBook is not null
+      await userBookService.addUserBook(
         newBook.id,
         status,
         undefined,
@@ -157,7 +160,7 @@ export function AddBookModal({
     }
   };
 
-  const handleSubmitExistingBooks = () => {
+  const handleSubmitExistingBooks = async () => {
     if (selectedBookIds.length === 0) {
       return;
     }
@@ -166,14 +169,16 @@ export function AddBookModal({
     
     try {
       // Add selected books to user's collection
-      selectedBookIds.forEach(bookId => {
-        userBookService.addUserBook(
-          bookId,
-          selectedStatus,
-          undefined,
-          undefined
-        );
-      });
+      await Promise.all(
+        selectedBookIds.map(bookId => 
+          userBookService.addUserBook(
+            bookId,
+            selectedStatus,
+            undefined,
+            undefined
+          )
+        )
+      );
       
       resetForm();
       onSave();

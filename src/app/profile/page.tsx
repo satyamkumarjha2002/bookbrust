@@ -68,18 +68,18 @@ export default function ProfilePage() {
     loadUserProfile();
   }, [router, isClient]);
 
-  const loadUserProfile = () => {
+  const loadUserProfile = async () => {
     setIsLoading(true);
     try {
       // Get current user
-      const currentUser = authService.getCurrentUser();
+      const currentUser = await authService.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
         setName(currentUser.name || '');
         setEmail(currentUser.email);
         
         // Load reading statistics
-        const userBooks = userBookService.getUserBooks();
+        const userBooks = await userBookService.getUserBooks();
         
         const totalBooks = userBooks.length;
         const booksRead = userBooks.filter(book => book.status === BookStatus.FINISHED).length;
@@ -114,11 +114,11 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     try {
       if (!user) return;
       
-      const updatedUser = authService.updateProfile({ 
+      const updatedUser = await authService.updateProfile({ 
         name,
         email 
       });
@@ -141,8 +141,8 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     router.push('/login');
   };
 
